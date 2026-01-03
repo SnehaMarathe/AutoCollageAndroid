@@ -3,19 +3,16 @@ package com.example.collage
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
@@ -27,14 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.launch
 
-/**
- * Single-screen workflow (requested): Collage canvas + templates + bottom tabs.
- * Added Share buttons for Instagram / WhatsApp after export.
- */
 private enum class Tab { TEMPLATES, ADJUST, EXPORT }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,17 +47,17 @@ fun LaunchUiRoot(vm: CollageViewModel) {
     var showExportSheet by remember { mutableStateOf(false) }
     var lastExportUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Crop launcher
     val cropLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { res ->
         when (res.resultCode) {
             Activity.RESULT_OK -> {
                 val intent = res.data
-                val out = intent?.let { UCrop.getOutput(it) } ?: intent?.data
+                val out: Uri? = intent?.let { UCrop.getOutput(it) } ?: intent?.data
                 if (out != null && activeSlot >= 0) {
                     vm.setSlotUri(activeSlot, out)
                 } else {
+                    // Crop finished but no explicit output: keep the committed slot image.
                     scope.launch { snackbar.showSnackbar("Crop finished") }
                 }
             }
@@ -85,17 +77,19 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         cropLauncher.launch(UCropHelper.buildIntent(context, source))
     }
 
-    // Gallery picker
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
-        if (uri != null && activeSlot >= 0) { vm.setSlotUri(activeSlot, uri); launchCrop(uri) }
+        if (uri != null && activeSlot >= 0) {
+            // Commit BEFORE crop (prevents "crop output missing" from blanking slot)
+            vm.setSlotUri(activeSlot, uri)
+            launchCrop(uri)
+        }
         activeSlot = -1
         activeCameraSlot = -1
         slotSheetFor = -1
     }
 
-    // Permission for camera
     val cameraPermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -112,8 +106,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         cameraPermission.launch(Manifest.permission.CAMERA)
     }
 
-    fun exportNow(): Uri? {
-        return CollageRenderer.renderAndSave(
+    fun exportNow(): Uri? =
+        CollageRenderer.renderAndSave(
             context = context,
             template = vm.selectedTemplate.value,
             slotUris = vm.slotUris.mapIndexed { i, u -> u ?: vm.draftCaptureUris.getOrNull(i) }.toList(),
@@ -122,26 +116,25 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             cornerRadiusPx = vm.cornerRadiusPx.value,
             outSizePx = 2048
         )
-    }
 
     fun shareTo(packageName: String, uri: Uri) {
         val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_SEND).apply {
+        val direct = Intent(Intent.ACTION_SEND).apply {
             type = "image/*"
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             setPackage(packageName)
         }
-        // If app not installed, fall back to chooser
-        val resolved = intent.resolveActivity(pm)
-        val finalIntent = if (resolved != null) intent else Intent.createChooser(
-            Intent(Intent.ACTION_SEND).apply {
-                type = "image/*"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            },
-            "Share collage"
-        )
+        val finalIntent =
+            if (direct.resolveActivity(pm) != null) direct
+            else Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                },
+                context.getString(R.string.app_name)
+            )
 
         try {
             context.startActivity(finalIntent)
@@ -179,10 +172,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                })
-{ Icon(Icons.Filled.Upload, contentDescription = "Export") }
-                    Spacer(Modifier.width(10.dp))
                 }
+                // NOTE: no top-right export (requested)
             )
         },
         bottomBar = {
@@ -207,6 +198,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                         if (out != null) {
                             lastExportUri = out
                             showExportSheet = true
+                            scope.launch { snackbar.showSnackbar("Saved to Gallery") }
                         } else {
                             scope.launch { snackbar.showSnackbar("Save failed") }
                         }
@@ -224,9 +216,11 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+
             ElevatedCard(shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Templates", style = MaterialTheme.typography.titleMedium)
+
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(CollageTemplates.all) { t ->
                             FilterChip(
@@ -273,28 +267,18 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 }
             )
 
-            // lightweight contextual panel depending on tab
-            when (tab) {
-                Tab.TEMPLATES -> Text(
-                    "Choose a layout above. Tap a slot to add photos.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Tab.ADJUST -> Text(
-                    "Use Adjust to change spacing and corner radius.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Tab.EXPORT -> Text(
-                    "Export will save the collage and open share options.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                when (tab) {
+                    Tab.TEMPLATES -> "Tap a slot to add photos. Pinch & drag to position."
+                    Tab.ADJUST -> "Use Adjust to change spacing and corner radius."
+                    Tab.EXPORT -> "Export saves the collage and shows share options."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 
-    // Slot action sheet
     if (slotSheetFor >= 0) {
         ModalBottomSheet(onDismissRequest = { slotSheetFor = -1 }) {
             Column(
@@ -340,7 +324,6 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         }
     }
 
-    // Adjust sheet
     if (showAdjustSheet) {
         ModalBottomSheet(onDismissRequest = { showAdjustSheet = false }) {
             Column(
@@ -360,7 +343,6 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         }
     }
 
-    // Export / share sheet
     if (showExportSheet) {
         val uri = lastExportUri
         ModalBottomSheet(onDismissRequest = { showExportSheet = false }) {
@@ -371,33 +353,22 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text("Export ready", style = MaterialTheme.typography.titleMedium)
-                Text("Your collage is saved. Share it now:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Share your collage:", color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Button(
-                    onClick = {
-                        val u = uri ?: return@Button
-                        // Instagram (main app)
-                        shareTo("com.instagram.android", u)
-                    },
+                    onClick = { uri?.let { shareTo("com.instagram.android", it) } },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = uri != null
                 ) { Text("Post to Instagram") }
 
                 OutlinedButton(
-                    onClick = {
-                        val u = uri ?: return@OutlinedButton
-                        // WhatsApp
-                        shareTo("com.whatsapp", u)
-                    },
+                    onClick = { uri?.let { shareTo("com.whatsapp", it) } },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = uri != null
                 ) { Text("Share on WhatsApp") }
 
                 TextButton(
-                    onClick = {
-                        val u = uri ?: return@TextButton
-                        shareChooser(u)
-                    },
+                    onClick = { uri?.let { shareChooser(it) } },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = uri != null
                 ) { Text("More apps") }
