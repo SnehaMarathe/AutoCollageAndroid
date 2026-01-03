@@ -396,7 +396,9 @@ private fun CameraSlot(
                                                     "${context.packageName}.fileprovider",
                                                     file
                                                 )
+                                                // ✅ Persist draft AND commit immediately so export includes it
                                                 vm.setDraftCapture(slotIndex, contentUri)
+                                                vm.setSlotUri(slotIndex, contentUri)
                                                 capturedUri = contentUri
                                             }
                                             override fun onError(exception: ImageCaptureException) { }
@@ -405,14 +407,41 @@ private fun CameraSlot(
                                 }
                             )
                         } else {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedButton(onClick = {
-                                    vm.clearDraftCapture(slotIndex)
-                                    capturedUri = null
-                                    capturedThumb = null
-                                }) { Text("Retake") }
-                                Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
-                            }
+                            
+if (compact) {
+    // ✅ Vertical-friendly controls for narrow (vertical) slots
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Button(
+            onClick = { onUse(capturedUri!!) },
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 10.dp)
+        ) { Text("Use") }
+
+        OutlinedButton(
+            onClick = {
+                vm.clearDraftCapture(slotIndex)
+                capturedUri = null
+                capturedThumb = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 10.dp)
+        ) { Text("Retake") }
+    }
+} else {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(onClick = {
+            vm.clearDraftCapture(slotIndex)
+            capturedUri = null
+            capturedThumb = null
+        }) { Text("Retake") }
+        Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
+    }
+}
+
                         }
                     }
 
