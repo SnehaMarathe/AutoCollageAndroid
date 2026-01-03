@@ -1,6 +1,9 @@
 package com.example.collage
 
+import android.content.Context
+import android.graphics.Color
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.collection.LruCache
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -13,13 +16,18 @@ class CollageViewModel : ViewModel() {
     val slotUris = mutableStateListOf<Uri?>()
     val slotTransforms = mutableStateListOf<SlotTransform>()
 
-    // ✅ Per-slot "draft" capture for in-slot camera persistence
+    // Per-slot draft capture (camera persistence)
     val draftCaptureUris = mutableStateListOf<Uri?>()
 
+    // Editor controls
     val spacingPx = mutableStateOf(14f)
     val cornerRadiusPx = mutableStateOf(26f)
+    val backgroundColorArgb = mutableStateOf(Color.parseColor("#0B0F19")) // default dark
 
-    private val thumbCache = LruCache<String, ImageBitmap>(80)
+    // Recent exports (loaded from MediaStore + appended on export)
+    val recentExports = mutableStateListOf<Uri>()
+
+    private val thumbCache = LruCache<String, ImageBitmap>(90)
 
     init { setTemplate(selectedTemplate.value) }
 
@@ -42,6 +50,14 @@ class CollageViewModel : ViewModel() {
         }
     }
 
+    fun clearSlot(index: Int) {
+        if (index in 0 until slotUris.size) {
+            slotUris[index] = null
+            slotTransforms[index] = SlotTransform()
+            clearDraftCapture(index)
+        }
+    }
+
     fun setSlotTransform(index: Int, transform: SlotTransform) {
         if (index in 0 until slotTransforms.size) slotTransforms[index] = transform
     }
@@ -54,4 +70,38 @@ class CollageViewModel : ViewModel() {
 
     fun getCachedThumb(uri: Uri) = thumbCache.get(uri.toString())
     fun putCachedThumb(uri: Uri, bmp: ImageBitmap) { thumbCache.put(uri.toString(), bmp) }
+
+    fun addRecentExport(uri: Uri) {
+        // newest first
+        recentExports.remove(uri)
+        recentExports.add(0, uri)
+        // cap
+        while (recentExports.size > 24) recentExports.removeLast()
+    }
+
+    fun loadRecentExportsFromMediaStore(context: Context, limit: Int = 24) {
+        // best-effort: load latest images saved by this app folder
+        try {
+            val resolver = context.contentResolver
+            val projection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.RELATIVE_PATH)
+            val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
+            val selectionArgs = arrayOf("%Pictures/AutoCollage%")
+            val sort = "${MediaStore.Images.Media.DATE_ADDED} DESC"
+
+            resolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, selection, selectionArgs, sort)
+                ?.use { c ->
+                    val idCol = c.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                    recentExports.clear()
+                    var count = 0
+                    while (c.moveToNext() && count < limit) {
+                        val id = c.getLong(idCol)
+                        val uri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id.toString())
+                        recentExports.add(uri)
+                        count++
+                    }
+                }
+        } catch (_: Exception) {
+            // ignore
+        }
+    }
 }
