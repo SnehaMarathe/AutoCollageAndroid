@@ -85,17 +85,19 @@ fun CollagePreview(
             val slotH = r.h * hPx - spacing
             val slotAspect = if (slotH > 0f) slotW / slotH else 1f
 
-            val uri = slotUris.getOrNull(idx)
+            val committedUri = slotUris.getOrNull(idx)
+            val draftUri = vm.draftCaptureUris.getOrNull(idx)
+            val displayUri = committedUri ?: draftUri
             val currentT = slotTransforms.getOrNull(idx) ?: SlotTransform()
 
-            var thumb by remember(uri) { mutableStateOf<ImageBitmap?>(null) }
+            var thumb by remember(displayUri) { mutableStateOf<ImageBitmap?>(null) }
 
-            LaunchedEffect(uri) {
+            LaunchedEffect(displayUri) {
                 thumb = null
-                if (uri == null) return@LaunchedEffect
-                vm.getCachedThumb(uri)?.let { thumb = it; return@LaunchedEffect }
-                val loaded = ThumbnailLoader.loadThumbnail(context, uri, maxSizePx = 1024)
-                if (loaded != null) vm.putCachedThumb(uri, loaded)
+                if (displayUri == null) return@LaunchedEffect
+                vm.getCachedThumb(displayUri)?.let { thumb = it; return@LaunchedEffect }
+                val loaded = ThumbnailLoader.loadThumbnail(context, displayUri, maxSizePx = 1024)
+                if (loaded != null) vm.putCachedThumb(displayUri, loaded)
                 thumb = loaded
             }
 
@@ -139,7 +141,7 @@ fun CollagePreview(
                         )
                     }
 
-                    uri != null && thumb != null -> {
+                    displayUri != null && thumb != null -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
