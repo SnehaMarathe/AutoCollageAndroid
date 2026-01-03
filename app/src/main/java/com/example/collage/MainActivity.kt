@@ -179,9 +179,12 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
                                 border = FilterChipDefaults.filterChipBorder(
-                                    borderColor = MaterialTheme.colorScheme.outline,
-                                    selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                )
+    enabled = true,
+    selected = t.id == vm.selectedTemplate.value.id,
+    borderColor = MaterialTheme.colorScheme.outline,
+    selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+)
+
                             )
                         }
                     }
