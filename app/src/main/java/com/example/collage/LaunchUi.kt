@@ -61,9 +61,13 @@ fun LaunchUiRoot(vm: CollageViewModel) {
     ) { res ->
         when (res.resultCode) {
             Activity.RESULT_OK -> {
-                val out = UCrop.getOutput(res.data!!)
-                if (out != null && activeSlot >= 0) vm.setSlotUri(activeSlot, out)
-                else scope.launch { snackbar.showSnackbar("Crop output missing") }
+                val intent = res.data
+                val out = intent?.let { UCrop.getOutput(it) } ?: intent?.data
+                if (out != null && activeSlot >= 0) {
+                    vm.setSlotUri(activeSlot, out)
+                } else {
+                    scope.launch { snackbar.showSnackbar("Crop finished") }
+                }
             }
             UCrop.RESULT_ERROR -> {
                 val err = UCrop.getError(res.data!!)
@@ -85,7 +89,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
-        if (uri != null && activeSlot >= 0) launchCrop(uri)
+        if (uri != null && activeSlot >= 0) { vm.setSlotUri(activeSlot, uri); launchCrop(uri) }
         activeSlot = -1
         activeCameraSlot = -1
         slotSheetFor = -1
@@ -168,26 +172,15 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("AutoCollage", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(context.getString(R.string.app_name), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            "Tap slot for Camera/Gallery • Pinch to adjust",
+                            context.getString(R.string.tagline),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                },
-                actions = {
-                    FilledTonalIconButton(
-                        onClick = {
-                            val out = exportNow()
-                            if (out != null) {
-                                lastExportUri = out
-                                showExportSheet = true
-                            } else {
-                                scope.launch { snackbar.showSnackbar("Save failed") }
-                            }
-                        }
-                    ) { Icon(Icons.Filled.Upload, contentDescription = "Export") }
+                })
+{ Icon(Icons.Filled.Upload, contentDescription = "Export") }
                     Spacer(Modifier.width(10.dp))
                 }
             )
