@@ -2,29 +2,42 @@ package com.example.collage
 
 import android.net.Uri
 import android.view.Surface
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.FlashAuto
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -55,8 +68,6 @@ fun CollagePreview(
 
     BoxWithConstraints(
         modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
     ) {
@@ -120,7 +131,9 @@ fun CollagePreview(
                     idx == activeCameraSlot -> {
                         CameraSlot(
                             modifier = Modifier.fillMaxSize(),
+                            slotIndex = idx,
                             slotAspect = slotAspect,
+                            vm = vm,
                             onUse = { capturedUri -> onCameraCaptured(idx, capturedUri) },
                             onCancel = onCameraCancel
                         )
@@ -162,30 +175,47 @@ fun CollagePreview(
     }
 }
 
+private enum class FlashModeUi { OFF, AUTO, ON }
+
 @Composable
 private fun CameraSlot(
     modifier: Modifier = Modifier,
+    slotIndex: Int,
     slotAspect: Float,
+    vm: CollageViewModel,
     onUse: (Uri) -> Unit,
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val haptic = LocalHapticFeedback.current
 
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    var capturedUri by remember { mutableStateOf<Uri?>(null) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+
+    // ✅ Per-slot persisted draft capture
+    val persistedDraft = vm.draftCaptureUris.getOrNull(slotIndex)
+    var capturedUri by remember(slotIndex, persistedDraft) { mutableStateOf(persistedDraft) }
     var capturedThumb by remember { mutableStateOf<ImageBitmap?>(null) }
     var isBound by remember { mutableStateOf(false) }
 
-    // We keep PreviewView stable across recompositions
+    // Pro toggles
+    var lensFacing by rememberSaveable(slotIndex) { mutableStateOf(CameraSelector.LENS_FACING_BACK) }
+    var flashModeUi by rememberSaveable(slotIndex) { mutableStateOf(FlashModeUi.AUTO) }
+    var gridOn by rememberSaveable(slotIndex) { mutableStateOf(true) }
+
     val previewView = remember {
-        PreviewView(context).apply {
-            scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
+        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
     }
 
-    // Bind camera whenever slot aspect changes (different slot)
-    LaunchedEffect(slotAspect) {
+    fun uiToFlashMode(mode: FlashModeUi): Int = when (mode) {
+        FlashModeUi.OFF -> ImageCapture.FLASH_MODE_OFF
+        FlashModeUi.AUTO -> ImageCapture.FLASH_MODE_AUTO
+        FlashModeUi.ON -> ImageCapture.FLASH_MODE_ON
+    }
+
+    // Bind/rebind camera when slot aspect or toggles change
+    LaunchedEffect(slotAspect, lensFacing, flashModeUi) {
         val provider = ProcessCameraProvider.getInstance(context).get()
         val aspect = CameraAspect.closestCameraXAspect(slotAspect)
         val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
@@ -199,16 +229,17 @@ private fun CameraSlot(
         val capture = ImageCapture.Builder()
             .setTargetAspectRatio(aspect)
             .setTargetRotation(rotation)
+            .setFlashMode(uiToFlashMode(flashModeUi))
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .build()
 
         imageCapture = capture
-        capturedUri = null
         capturedThumb = null
 
         try {
             provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+            val selector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+            camera = provider.bindToLifecycle(lifecycleOwner, selector, preview, capture)
             isBound = true
         } catch (_: Exception) {
             isBound = false
@@ -219,13 +250,13 @@ private fun CameraSlot(
         AndroidView(
             factory = { previewView },
             modifier = Modifier.fillMaxSize(),
-            update = {
-                val rot = it.display?.rotation ?: Surface.ROTATION_0
+            update = { view ->
+                val rot = view.display?.rotation ?: Surface.ROTATION_0
                 imageCapture?.targetRotation = rot
             }
         )
 
-        // Confirm overlay when captured
+        // Confirmation overlay
         if (capturedThumb != null) {
             Image(
                 bitmap = capturedThumb!!,
@@ -235,7 +266,16 @@ private fun CameraSlot(
             )
         }
 
-        // Safe frame
+        if (gridOn) {
+            RuleOfThirdsOverlay(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(14.dp))
+            )
+        }
+
+        // Safe frame border
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -249,25 +289,73 @@ private fun CameraSlot(
                 )
         )
 
-        // Bottom controls: Instagram-like capture button
+        // Top-right controls
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { gridOn = !gridOn },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+            ) { Icon(Icons.Filled.GridOn, contentDescription = "Grid") }
+
+            IconButton(
+                onClick = {
+                    flashModeUi = when (flashModeUi) {
+                        FlashModeUi.OFF -> FlashModeUi.AUTO
+                        FlashModeUi.AUTO -> FlashModeUi.ON
+                        FlashModeUi.ON -> FlashModeUi.OFF
+                    }
+                },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+            ) {
+                val icon = when (flashModeUi) {
+                    FlashModeUi.OFF -> Icons.Filled.FlashOff
+                    FlashModeUi.AUTO -> Icons.Filled.FlashAuto
+                    FlashModeUi.ON -> Icons.Filled.FlashOn
+                }
+                Icon(icon, contentDescription = "Flash")
+            }
+
+            IconButton(
+                onClick = {
+                    lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+                        CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+            ) { Icon(Icons.Filled.Cameraswitch, contentDescription = "Switch") }
+        }
+
+        // Bottom bar
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onCancel) { Text("Cancel") }
+            TextButton(onClick = {
+                vm.clearDraftCapture(slotIndex)
+                capturedUri = null
+                capturedThumb = null
+                onCancel()
+            }) { Text("Cancel") }
+
+            Spacer(modifier = Modifier.weight(1f))
 
             if (capturedUri == null) {
                 CaptureButton(
                     enabled = isBound,
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         val cap = imageCapture ?: return@CaptureButton
-                        val file = File(context.cacheDir, "slot_capture_${System.currentTimeMillis()}.jpg")
 
+                        val file = File(context.cacheDir, "slot_capture_${System.currentTimeMillis()}.jpg")
                         val output = ImageCapture.OutputFileOptions.Builder(file).build()
+
                         cap.takePicture(
                             output,
                             ContextCompat.getMainExecutor(context),
@@ -278,52 +366,79 @@ private fun CameraSlot(
                                         "${context.packageName}.fileprovider",
                                         file
                                     )
+                                    vm.setDraftCapture(slotIndex, contentUri)
                                     capturedUri = contentUri
                                 }
-                                override fun onError(exception: ImageCaptureException) {
-                                    // user can retry
-                                }
+                                override fun onError(exception: ImageCaptureException) { }
                             }
                         )
                     }
                 )
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { capturedUri = null; capturedThumb = null }) { Text("Retake") }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = {
+                        vm.clearDraftCapture(slotIndex)
+                        capturedUri = null
+                        capturedThumb = null
+                    }) { Text("Retake") }
                     Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
                 }
             }
 
-            Spacer(modifier = Modifier.width(64.dp))
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(72.dp))
         }
     }
 
     LaunchedEffect(capturedUri) {
         val u = capturedUri ?: return@LaunchedEffect
-        capturedThumb = ThumbnailLoader.loadThumbnail(context, u, 1600)
+        capturedThumb = vm.getCachedThumb(u) ?: ThumbnailLoader.loadThumbnail(context, u, 1600)?.also {
+            vm.putCachedThumb(u, it)
+        }
+    }
+}
+
+@Composable
+private fun RuleOfThirdsOverlay(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val x1 = w / 3f
+        val x2 = 2f * w / 3f
+        val y1 = h / 3f
+        val y2 = 2f * h / 3f
+        val c = Color.White.copy(alpha = 0.35f)
+
+        drawLine(c, start = Offset(x1, 0f), end = Offset(x1, h), strokeWidth = 1.5f, cap = StrokeCap.Round)
+        drawLine(c, start = Offset(x2, 0f), end = Offset(x2, h), strokeWidth = 1.5f, cap = StrokeCap.Round)
+        drawLine(c, start = Offset(0f, y1), end = Offset(w, y1), strokeWidth = 1.5f, cap = StrokeCap.Round)
+        drawLine(c, start = Offset(0f, y2), end = Offset(w, y2), strokeWidth = 1.5f, cap = StrokeCap.Round)
     }
 }
 
 @Composable
 private fun CaptureButton(enabled: Boolean, onClick: () -> Unit) {
-    // Instagram-ish: outer ring + inner filled circle
+    val outer = 72.dp
+    val inner = 56.dp
+
     Box(
-        modifier = Modifier.size(64.dp),
+        modifier = Modifier
+            .size(outer)
+            .clip(RoundedCornerShape(100))
+            .background(Color.White.copy(alpha = if (enabled) 0.18f else 0.10f))
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            modifier = Modifier.size(64.dp),
+            modifier = Modifier.size(outer),
             shape = RoundedCornerShape(100),
-            color = Color.White.copy(alpha = if (enabled) 0.95f else 0.5f),
-            tonalElevation = 2.dp,
-            shadowElevation = 6.dp,
-            onClick = onClick,
-            enabled = enabled
+            color = Color.White.copy(alpha = if (enabled) 0.92f else 0.55f),
+            shadowElevation = 10.dp
         ) {}
         Surface(
-            modifier = Modifier.size(50.dp),
+            modifier = Modifier.size(inner),
             shape = RoundedCornerShape(100),
-            color = Color.White.copy(alpha = if (enabled) 1f else 0.6f)
+            color = Color.White.copy(alpha = if (enabled) 1f else 0.65f)
         ) {}
     }
 }

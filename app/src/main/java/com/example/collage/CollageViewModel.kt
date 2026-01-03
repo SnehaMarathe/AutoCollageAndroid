@@ -13,6 +13,9 @@ class CollageViewModel : ViewModel() {
     val slotUris = mutableStateListOf<Uri?>()
     val slotTransforms = mutableStateListOf<SlotTransform>()
 
+    // ✅ Per-slot "draft" capture for in-slot camera persistence
+    val draftCaptureUris = mutableStateListOf<Uri?>()
+
     val spacingPx = mutableStateOf(14f)
     val cornerRadiusPx = mutableStateOf(26f)
 
@@ -24,9 +27,11 @@ class CollageViewModel : ViewModel() {
         selectedTemplate.value = t
         slotUris.clear()
         slotTransforms.clear()
+        draftCaptureUris.clear()
         repeat(t.slots.size) {
             slotUris.add(null)
             slotTransforms.add(SlotTransform())
+            draftCaptureUris.add(null)
         }
     }
 
@@ -40,6 +45,12 @@ class CollageViewModel : ViewModel() {
     fun setSlotTransform(index: Int, transform: SlotTransform) {
         if (index in 0 until slotTransforms.size) slotTransforms[index] = transform
     }
+
+    fun setDraftCapture(index: Int, uri: Uri?) {
+        if (index in 0 until draftCaptureUris.size) draftCaptureUris[index] = uri
+    }
+
+    fun clearDraftCapture(index: Int) = setDraftCapture(index, null)
 
     fun getCachedThumb(uri: Uri) = thumbCache.get(uri.toString())
     fun putCachedThumb(uri: Uri, bmp: ImageBitmap) { thumbCache.put(uri.toString(), bmp) }

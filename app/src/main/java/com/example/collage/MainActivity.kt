@@ -56,6 +56,7 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
             }
             else -> { /* cancelled */ }
         }
+        if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
         activeSlot = -1
         activeCameraSlot = -1
     }
@@ -68,6 +69,7 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null && activeSlot >= 0) launchCrop(uri)
+        if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
         activeSlot = -1
         activeCameraSlot = -1
     }

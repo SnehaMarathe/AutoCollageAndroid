@@ -1,16 +1,11 @@
-# AutoCollageAndroid Pro (Camera-in-slot)
+# AutoCollageAndroid — Instagram Pro
 
-Instagram-friendly collage creator:
-- Tap a collage slot -> **live camera opens inside the slot**
-- Align framing to the slot -> Capture -> Use -> Crop
-- Pinch-zoom + drag to position inside each slot
-- Export saves **one final image** to `Pictures/AutoCollage`
+Highlights:
+- Tap any slot → **in-slot live camera** (CameraX)
+- ✅ Per-slot camera **draft persistence**: capture, switch slots, come back — it stays until you Use/Retake/Cancel
+- Pro controls: **Front/Back switch**, **Flash OFF/AUTO/ON**, **Rule-of-thirds grid overlay**
+- Long-press slot → Photo Picker (gallery)
+- Crop (uCrop) → then pinch/drag positioning per slot
+- Export → renders one final bitmap and saves to `Pictures/AutoCollage`
 
-## Controls
-- Tap slot: in-slot camera
-- Long-press slot: Photo Picker (gallery)
-- Export: saves collage
-
-## GitHub Actions
-Workflow builds Debug APK and uploads it as an artifact.
-If `gradle-wrapper.jar` is missing, the workflow generates it on the runner.
+GitHub Actions builds Debug APK and uploads as artifact.
