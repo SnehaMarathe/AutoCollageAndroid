@@ -3,6 +3,9 @@ package com.example.collage
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.collage.ui.theme.AutoCollageTheme
 
@@ -11,8 +14,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             AutoCollageTheme {
-                val vm: CollageViewModel = viewModel()
-                LaunchApp(vm)
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    val vm: CollageViewModel = viewModel()
+                    LaunchUiRoot(vm)
+                }
             }
         }
     }
