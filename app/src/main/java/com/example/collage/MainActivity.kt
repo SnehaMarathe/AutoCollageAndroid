@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -35,10 +37,9 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var showAdjustSheet by remember { mutableStateOf(false) }
-
     var activeSlot by remember { mutableIntStateOf(-1) }
     var activeCameraSlot by remember { mutableIntStateOf(-1) }
+    var showAdjustSheet by remember { mutableStateOf(false) }
 
     val cropLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -56,7 +57,9 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                 val err = UCrop.getError(res.data!!)
                 scope.launch { snackbarHostState.showSnackbar("Crop failed: ${err?.message ?: "unknown"}") }
             }
-            else -> { /* cancelled */ }
+            else -> {
+                // Cancelled: keep existing slot content (committed or draft)
+            }
         }
         if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
         activeSlot = -1
@@ -71,7 +74,6 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null && activeSlot >= 0) launchCrop(uri)
-        if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
         activeSlot = -1
         activeCameraSlot = -1
     }
@@ -101,7 +103,7 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                 .padding(padding)
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             TemplateRow(
                 selectedId = vm.selectedTemplate.value.id,
@@ -115,7 +117,6 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
             CollagePreview(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
                     .aspectRatio(1f),
                 template = vm.selectedTemplate.value,
                 slotUris = vm.slotUris,
@@ -127,64 +128,36 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                 onSlotTap = { idx -> startInSlotCamera(idx) },
                 onSlotLongPress = { idx ->
                     activeSlot = idx
-                    galleryPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
+                    galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },
                 onTransformChange = { idx, t -> vm.setSlotTransform(idx, t) },
                 onCameraCaptured = { slotIdx, capturedUri ->
-                    // ✅ Immediately commit the captured photo to the slot so it doesn't disappear
+                    // Save draft already in VM; still set committed so it stays visible if crop is skipped
                     vm.setSlotUri(slotIdx, capturedUri)
                     activeSlot = slotIdx
                     launchCrop(capturedUri)
                 },
                 onCameraCancel = {
+                    if (activeCameraSlot >= 0) vm.clearDraftCapture(activeCameraSlot)
                     activeSlot = -1
-          
-Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically
-) {
-    AssistChip(
-        onClick = { showAdjustSheet = true },
-        label = { Text("Adjust") }
-    )
-    Text(
-        text = "Tap slot: camera • Long-press: gallery",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-if (showAdjustSheet) {
-    ModalBottomSheet(
-        onDismissRequest = { showAdjustSheet = false }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text("Layout", style = MaterialTheme.typography.titleMedium)
-            Text("Spacing", style = MaterialTheme.typography.labelMedium)
-            Slider(vm.spacingPx.value, { vm.spacingPx.value = it }, valueRange = 0f..64f)
-            Text("Corner radius", style = MaterialTheme.typography.labelMedium)
-            Slider(vm.cornerRadiusPx.value, { vm.cornerRadiusPx.value = it }, valueRange = 0f..96f)
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = { showAdjustSheet = false },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Done") }
-            Spacer(Modifier.height(10.dp))
-        }
-    }
-}
-
-Button(
-eRange = 0f..96f)
+                    activeCameraSlot = -1
                 }
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                AssistChip(
+                    onClick = { showAdjustSheet = true },
+                    label = { Text("Adjust") }
+                )
+                Text(
+                    text = "Tap slot: camera • Long-press: gallery",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Button(
@@ -198,10 +171,43 @@ eRange = 0f..96f)
                         cornerRadiusPx = vm.cornerRadiusPx.value,
                         outSizePx = 2048
                     )
-                    scope.launch { snackbarHostState.showSnackbar(if (outUri != null) "Saved to Gallery" else "Save failed") }
+                    scope.launch {
+                        snackbarHostState.showSnackbar(if (outUri != null) "Saved to Gallery" else "Save failed")
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Export") }
+
+            if (showAdjustSheet) {
+                ModalBottomSheet(onDismissRequest = { showAdjustSheet = false }) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text("Layout", style = MaterialTheme.typography.titleMedium)
+                        Text("Spacing", style = MaterialTheme.typography.labelMedium)
+                        Slider(
+                            value = vm.spacingPx.value,
+                            onValueChange = { vm.spacingPx.value = it },
+                            valueRange = 0f..64f
+                        )
+                        Text("Corner radius", style = MaterialTheme.typography.labelMedium)
+                        Slider(
+                            value = vm.cornerRadiusPx.value,
+                            onValueChange = { vm.cornerRadiusPx.value = it },
+                            valueRange = 0f..96f
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Button(
+                            onClick = { showAdjustSheet = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Done") }
+                        Spacer(Modifier.height(10.dp))
+                    }
+                }
+            }
         }
     }
 }
