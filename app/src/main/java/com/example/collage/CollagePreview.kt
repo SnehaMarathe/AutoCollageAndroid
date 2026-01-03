@@ -37,6 +37,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CollagePreview(
+    modifier: Modifier = Modifier,
     template: CollageTemplate,
     slotUris: List<Uri?>,
     slotTransforms: List<SlotTransform>,
@@ -53,7 +54,7 @@ fun CollagePreview(
     val context = LocalContext.current
 
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
