@@ -17,11 +17,13 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,7 +71,8 @@ fun CollagePreview(
     BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
     ) {
         val density = LocalDensity.current
         val wPx = with(density) { maxWidth.toPx() }
@@ -122,7 +125,8 @@ fun CollagePreview(
                     .width(with(density) { slotW.toDp() })
                     .height(with(density) { slotH.toDp() })
                     .clip(RoundedCornerShape(radiusDp))
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(radiusDp))
                     .combinedClickable(
                         onClick = { onSlotTap(idx) },
                         onLongClick = { onSlotLongPress(idx) }
@@ -164,11 +168,29 @@ fun CollagePreview(
                     }
 
                     else -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("+", style = MaterialTheme.typography.displaySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("Camera", style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                tonalElevation = 2.dp
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("Camera", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Photo, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Hold for gallery", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -203,9 +225,7 @@ private fun CameraSlot(
     var flashModeUi by rememberSaveable(slotIndex) { mutableStateOf(FlashModeUi.AUTO) }
     var gridOn by rememberSaveable(slotIndex) { mutableStateOf(true) }
 
-    val previewView = remember {
-        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
-    }
+    val previewView = remember { PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } }
 
     fun uiToFlashMode(mode: FlashModeUi): Int = when (mode) {
         FlashModeUi.OFF -> ImageCapture.FLASH_MODE_OFF
@@ -275,15 +295,10 @@ private fun CameraSlot(
                 .fillMaxSize()
                 .padding(10.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color.Transparent)
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f),
-                    shape = RoundedCornerShape(14.dp)
-                )
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.75f), RoundedCornerShape(14.dp))
         )
 
-        // Top-right toggles
+        // top-right controls
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -293,7 +308,7 @@ private fun CameraSlot(
         ) {
             IconButton(
                 onClick = { gridOn = !gridOn },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
             ) { Icon(Icons.Filled.GridOn, contentDescription = "Grid") }
 
             IconButton(
@@ -304,7 +319,7 @@ private fun CameraSlot(
                         FlashModeUi.ON -> FlashModeUi.OFF
                     }
                 },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
             ) {
                 val icon = when (flashModeUi) {
                     FlashModeUi.OFF -> Icons.Filled.FlashOff
@@ -316,14 +331,15 @@ private fun CameraSlot(
 
             IconButton(
                 onClick = {
-                    lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
-                        CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                    lensFacing =
+                        if (lensFacing == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT
+                        else CameraSelector.LENS_FACING_BACK
                 },
-                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
             ) { Icon(Icons.Filled.Cameraswitch, contentDescription = "Switch camera") }
         }
 
-        // Bottom controls: aligned INSIDE the slot and compact for small slots
+        // bottom controls, slot-aligned
         BoxWithConstraints(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -373,7 +389,6 @@ private fun CameraSlot(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    // Center action region anchored to slot center
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         if (capturedUri == null) {
                             CaptureButton(
@@ -382,7 +397,6 @@ private fun CameraSlot(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     val cap = imageCapture ?: return@CaptureButton
-
                                     val file = File(context.cacheDir, "slot_capture_${System.currentTimeMillis()}.jpg")
                                     val output = ImageCapture.OutputFileOptions.Builder(file).build()
 
@@ -396,7 +410,7 @@ private fun CameraSlot(
                                                     "${context.packageName}.fileprovider",
                                                     file
                                                 )
-                                                // ✅ Persist draft AND commit immediately so export includes it
+                                                // Persist draft AND commit immediately so export includes it
                                                 vm.setDraftCapture(slotIndex, contentUri)
                                                 vm.setSlotUri(slotIndex, contentUri)
                                                 capturedUri = contentUri
@@ -407,45 +421,40 @@ private fun CameraSlot(
                                 }
                             )
                         } else {
-                            
-if (compact) {
-    // ✅ Vertical-friendly controls for narrow (vertical) slots
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Button(
-            onClick = { onUse(capturedUri!!) },
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 10.dp)
-        ) { Text("Use") }
+                            if (compact) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Button(
+                                        onClick = { onUse(capturedUri!!) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = PaddingValues(vertical = 10.dp)
+                                    ) { Text("Use") }
 
-        OutlinedButton(
-            onClick = {
-                vm.clearDraftCapture(slotIndex)
-                capturedUri = null
-                capturedThumb = null
-            },
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 10.dp)
-        ) { Text("Retake") }
-    }
-} else {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(onClick = {
-            vm.clearDraftCapture(slotIndex)
-            capturedUri = null
-            capturedThumb = null
-        }) { Text("Retake") }
-        Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
-    }
-}
-
+                                    OutlinedButton(
+                                        onClick = {
+                                            vm.clearDraftCapture(slotIndex)
+                                            capturedUri = null
+                                            capturedThumb = null
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = PaddingValues(vertical = 10.dp)
+                                    ) { Text("Retake") }
+                                }
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedButton(onClick = {
+                                        vm.clearDraftCapture(slotIndex)
+                                        capturedUri = null
+                                        capturedThumb = null
+                                    }) { Text("Retake") }
+                                    Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
+                                }
+                            }
                         }
                     }
-
-                    Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
                 }
             }
         }
