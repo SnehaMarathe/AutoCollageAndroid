@@ -276,20 +276,6 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            vm.clearDraftCapture(activeCameraSlot)
-                            activeCameraSlot = -1
-                            activeSlot = -1
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Cancel") }
-
-                    OutlinedButton(
-                        onClick = { vm.clearDraftCapture(activeCameraSlot) },
-                        modifier = Modifier.weight(1f),
-                        enabled = draft != null
-                    ) { Text("Retake") }
 
                     Button(
                         onClick = {
@@ -306,7 +292,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
 
             Text(
                 when (tab) {
-                    Tab.TEMPLATES -> "Tap a slot to open camera • Long-press for gallery • Pinch & drag to adjust."
+                    Tab.TEMPLATES -> "Tap a slot to open camera • Retake from the frame button • Long-press for gallery • Pinch & drag to adjust."
                     Tab.ADJUST -> "Adjust spacing and corner radius."
                     Tab.EXPORT -> "Export saves to Gallery and shows share options."
                 },

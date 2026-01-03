@@ -420,45 +420,22 @@ private fun CameraSlot(
                                     )
                                 }
                             )
-                        } else {
-                            if (compact) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Button(
-                                        onClick = { onUse(capturedUri!!) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(vertical = 10.dp)
-                                    ) { Text("Use") }
 
-                                    OutlinedButton(
-                                        onClick = {
-                                            vm.clearDraftCapture(slotIndex)
-                                            capturedUri = null
-                                            capturedThumb = null
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(vertical = 10.dp)
-                                    ) { Text("Retake") }
-                                }
-                            } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    OutlinedButton(onClick = {
-                                        vm.clearDraftCapture(slotIndex)
-                                        capturedUri = null
-                                        capturedThumb = null
-                                    }) { Text("Retake") }
-                                    Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+} else {
+    // Draft captured: keep the frame clean — show ONLY a retake toggle where the shutter was.
+    FilledTonalButton(
+        onClick = {
+            vm.clearDraftCapture(slotIndex)
+            capturedUri = null
+            capturedThumb = null
+        },
+        enabled = isBound,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = if (compact) 10.dp else 12.dp),
+        shape = RoundedCornerShape(999.dp)
+    ) {
+        Text("Retake")
     }
+}
 
     LaunchedEffect(capturedUri) {
         val u = capturedUri ?: return@LaunchedEffect
