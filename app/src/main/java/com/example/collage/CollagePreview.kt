@@ -331,68 +331,104 @@ private fun CameraSlot(
             ) { Icon(Icons.Filled.Cameraswitch, contentDescription = "Switch") }
         }
 
-        // Bottom bar
+        
+// Bottom controls: responsive + slot-aligned
+BoxWithConstraints(
+    modifier = Modifier
+        .align(Alignment.BottomCenter)
+        .fillMaxWidth()
+        .padding(horizontal = 10.dp, vertical = 10.dp)
+) {
+    val compact = maxWidth < 240.dp
+
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        tonalElevation = 2.dp,
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Row(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = if (compact) 10.dp else 14.dp, vertical = if (compact) 8.dp else 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(onClick = {
-                vm.clearDraftCapture(slotIndex)
-                capturedUri = null
-                capturedThumb = null
-                onCancel()
-            }) { Text("Cancel") }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            if (capturedUri == null) {
-                CaptureButton(
-                    enabled = isBound,
+            // Cancel
+            if (compact) {
+                IconButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        val cap = imageCapture ?: return@CaptureButton
-
-                        val file = File(context.cacheDir, "slot_capture_${System.currentTimeMillis()}.jpg")
-                        val output = ImageCapture.OutputFileOptions.Builder(file).build()
-
-                        cap.takePicture(
-                            output,
-                            ContextCompat.getMainExecutor(context),
-                            object : ImageCapture.OnImageSavedCallback {
-                                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                                    val contentUri = FileProvider.getUriForFile(
-                                        context,
-                                        "${context.packageName}.fileprovider",
-                                        file
-                                    )
-                                    vm.setDraftCapture(slotIndex, contentUri)
-                                    capturedUri = contentUri
-                                }
-                                override fun onError(exception: ImageCaptureException) { }
-                            }
-                        )
-                    }
-                )
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = {
                         vm.clearDraftCapture(slotIndex)
                         capturedUri = null
                         capturedThumb = null
-                    }) { Text("Retake") }
-                    Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
+                        onCancel()
+                    }
+                ) {
+                    Text("×", style = MaterialTheme.typography.titleLarge)
+                }
+            } else {
+                TextButton(
+                    onClick = {
+                        vm.clearDraftCapture(slotIndex)
+                        capturedUri = null
+                        capturedThumb = null
+                        onCancel()
+                    }
+                ) { Text("Cancel") }
+            }
+
+            // Center action area (always centered within the slot)
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.weight(1f)) {
+                if (capturedUri == null) {
+                    CaptureButton(
+                        enabled = isBound,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            val cap = imageCapture ?: return@CaptureButton
+
+                            val file = File(context.cacheDir, "slot_capture_${System.currentTimeMillis()}.jpg")
+                            val output = ImageCapture.OutputFileOptions.Builder(file).build()
+
+                            cap.takePicture(
+                                output,
+                                ContextCompat.getMainExecutor(context),
+                                object : ImageCapture.OnImageSavedCallback {
+                                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                                        val contentUri = FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.fileprovider",
+                                            file
+                                        )
+                                        vm.setDraftCapture(slotIndex, contentUri)
+                                        capturedUri = contentUri
+                                    }
+                                    override fun onError(exception: ImageCaptureException) { }
+                                }
+                            )
+                        }
+                    )
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = {
+                            vm.clearDraftCapture(slotIndex)
+                            capturedUri = null
+                            capturedThumb = null
+                        }) { Text(if (compact) "Retake" else "Retake") }
+
+                        Button(onClick = { onUse(capturedUri!!) }) { Text("Use") }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(72.dp))
+            // Right "spacer" keeps row balanced; show quick retake if compact and captured?
+            Spacer(modifier = Modifier.width(if (compact) 0.dp else 4.dp))
         }
     }
+}
 
-    LaunchedEffect(capturedUri) {
+LaunchedEffect(capturedUri)
+ {
         val u = capturedUri ?: return@LaunchedEffect
         capturedThumb = vm.getCachedThumb(u) ?: ThumbnailLoader.loadThumbnail(context, u, 1600)?.also {
             vm.putCachedThumb(u, it)

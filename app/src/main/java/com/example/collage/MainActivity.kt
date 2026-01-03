@@ -35,6 +35,8 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    var showAdjustSheet by remember { mutableStateOf(false) }
+
     var activeSlot by remember { mutableIntStateOf(-1) }
     var activeCameraSlot by remember { mutableIntStateOf(-1) }
 
@@ -138,17 +140,50 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                 },
                 onCameraCancel = {
                     activeSlot = -1
-                    activeCameraSlot = -1
-                }
-            )
+          
+Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically
+) {
+    AssistChip(
+        onClick = { showAdjustSheet = true },
+        label = { Text("Adjust") }
+    )
+    Text(
+        text = "Tap slot: camera • Long-press: gallery",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
 
-            ElevatedCard {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Layout", style = MaterialTheme.typography.titleSmall)
-                    Text("Spacing", style = MaterialTheme.typography.labelMedium)
-                    Slider(vm.spacingPx.value, { vm.spacingPx.value = it }, valueRange = 0f..64f)
-                    Text("Corner radius", style = MaterialTheme.typography.labelMedium)
-                    Slider(vm.cornerRadiusPx.value, { vm.cornerRadiusPx.value = it }, valueRange = 0f..96f)
+if (showAdjustSheet) {
+    ModalBottomSheet(
+        onDismissRequest = { showAdjustSheet = false }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text("Layout", style = MaterialTheme.typography.titleMedium)
+            Text("Spacing", style = MaterialTheme.typography.labelMedium)
+            Slider(vm.spacingPx.value, { vm.spacingPx.value = it }, valueRange = 0f..64f)
+            Text("Corner radius", style = MaterialTheme.typography.labelMedium)
+            Slider(vm.cornerRadiusPx.value, { vm.cornerRadiusPx.value = it }, valueRange = 0f..96f)
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = { showAdjustSheet = false },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Done") }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+Button(
+eRange = 0f..96f)
                 }
             }
 
@@ -167,12 +202,6 @@ fun CollageApp(vm: CollageViewModel = viewModel()) {
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Export") }
-
-            Text(
-                text = "Tap slot: camera in-slot • Long-press: gallery",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
