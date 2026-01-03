@@ -39,10 +39,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
     var tab by remember { mutableStateOf(Tab.TEMPLATES) }
 
     var activeSlot by remember { mutableIntStateOf(-1) }
-    var activeCameraSlot by remember { mutableIntStateOf(-1) }
-
-    var slotSheetFor by remember { mutableIntStateOf(-1) }
-    var showAdjustSheet by remember { mutableStateOf(false) }
+    var activeCameraSlot by remember { mutableIntStateOf(-1) }    var showAdjustSheet by remember { mutableStateOf(false) }
 
     var showExportSheet by remember { mutableStateOf(false) }
     var lastExportUri by remember { mutableStateOf<Uri?>(null) }
@@ -69,9 +66,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         }
         if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
         activeSlot = -1
-        activeCameraSlot = -1
-        slotSheetFor = -1
-    }
+        activeCameraSlot = -1    }
 
     fun launchCrop(source: Uri) {
         cropLauncher.launch(UCropHelper.buildIntent(context, source))
@@ -86,9 +81,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             launchCrop(uri)
         }
         activeSlot = -1
-        activeCameraSlot = -1
-        slotSheetFor = -1
-    }
+        activeCameraSlot = -1    }
 
     val cameraPermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -249,7 +242,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 cornerRadiusPx = vm.cornerRadiusPx.value,
                 vm = vm,
                 activeCameraSlot = activeCameraSlot,
-                onSlotTap = { idx -> slotSheetFor = idx },
+                onSlotTap = { idx -> startCamera(idx) },
                 onSlotLongPress = { idx ->
                     activeSlot = idx
                     galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -267,6 +260,47 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 }
             )
 
+// Camera action row (Cancel / Retake / Use) placed BELOW the slot window for a cleaner canvas.
+if (activeCameraSlot >= 0) {
+    val draft = vm.draftCaptureUris.getOrNull(activeCameraSlot)
+    Spacer(Modifier.height(6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedButton(
+            onClick = {
+                vm.clearDraftCapture(activeCameraSlot)
+                activeSlot = -1
+                activeCameraSlot = -1
+            },
+            modifier = Modifier.weight(1f)
+        ) { Text("Cancel") }
+
+        OutlinedButton(
+            onClick = {
+                // Retake keeps camera active but clears last draft
+                vm.clearDraftCapture(activeCameraSlot)
+            },
+            modifier = Modifier.weight(1f),
+            enabled = draft != null
+        ) { Text("Retake") }
+
+        Button(
+            onClick = {
+                val uri = draft ?: return@Button
+                // Use -> commit and crop (same flow as before)
+                vm.setSlotUri(activeCameraSlot, uri)
+                activeSlot = activeCameraSlot
+                launchCrop(uri)
+            },
+            modifier = Modifier.weight(1f),
+            enabled = draft != null
+        ) { Text("Use") }
+    }
+}
+
             Text(
                 when (tab) {
                     Tab.TEMPLATES -> "Tap a slot to add photos. Pinch & drag to position."
@@ -276,51 +310,6 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-
-    if (slotSheetFor >= 0) {
-        ModalBottomSheet(onDismissRequest = { slotSheetFor = -1 }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text("Add photo", style = MaterialTheme.typography.titleMedium)
-
-                Button(
-                    onClick = {
-                        val idx = slotSheetFor
-                        slotSheetFor = -1
-                        startCamera(idx)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Camera") }
-
-                OutlinedButton(
-                    onClick = {
-                        activeSlot = slotSheetFor
-                        slotSheetFor = -1
-                        galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Gallery") }
-
-                TextButton(
-                    onClick = {
-                        val idx = slotSheetFor
-                        if (idx >= 0) {
-                            vm.slotUris[idx] = null
-                            vm.clearDraftCapture(idx)
-                        }
-                        slotSheetFor = -1
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Remove", color = MaterialTheme.colorScheme.error) }
-
-                Spacer(Modifier.height(10.dp))
-            }
         }
     }
 
