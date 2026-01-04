@@ -55,11 +55,16 @@ val gridOn = mutableStateOf(true)
     }
 
     fun setSlotUri(index: Int, uri: Uri) {
-        if (index in 0 until slotUris.size) {
-            slotUris[index] = uri
-            slotTransforms[index] = SlotTransform()
-        }
+    if (index in 0 until slotUris.size) {
+        // Invalidate thumbnail cache so edits (crop) reflect immediately.
+        val prev = slotUris[index]
+        if (prev != null) clearCachedThumb(prev)
+        clearCachedThumb(uri)
+
+        slotUris[index] = uri
+        slotTransforms[index] = SlotTransform()
     }
+}
 
     fun clearSlot(index: Int) {
         if (index in 0 until slotUris.size) {
@@ -87,6 +92,7 @@ val gridOn = mutableStateOf(true)
 
     fun getCachedThumb(uri: Uri) = thumbCache.get(uri.toString())
     fun putCachedThumb(uri: Uri, bmp: ImageBitmap) { thumbCache.put(uri.toString(), bmp) }
+    fun clearCachedThumb(uri: Uri) { thumbCache.remove(uri.toString()) }
 
     fun addRecentExport(uri: Uri) {
         // newest first

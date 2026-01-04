@@ -384,12 +384,6 @@ Box(
                     ) { Text("Edit") }
                 }
             }
-
-            Text(
-                "Tap a slot to open camera • Long-press for gallery • Pinch & drag to adjust.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 
