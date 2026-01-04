@@ -281,11 +281,38 @@ Row(
                 }
             }
 
-            CollagePreview(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(22.dp)),
+Box(
+
+
+    modifier = Modifier
+
+
+        .fillMaxWidth()
+
+
+        .weight(1f),
+
+
+    contentAlignment = Alignment.Center
+
+
+) {
+
+
+    CollagePreview(
+
+
+        modifier = Modifier
+
+
+            .fillMaxWidth()
+
+
+            .aspectRatio(1f)
+
+
+            .clip(RoundedCornerShape(22.dp)),
+
                 template = vm.selectedTemplate.value,
                 slotUris = vm.slotUris,
                 slotTransforms = vm.slotTransforms,
@@ -309,6 +336,10 @@ Row(
                     activeCameraSlot = -1
                 }
             )
+
+
+            }
+
 
             // ✅ Global camera action bar BELOW the slot (keeps slot UI clean)
             if (activeCameraSlot >= 0) {
