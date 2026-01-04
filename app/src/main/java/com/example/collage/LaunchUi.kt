@@ -218,7 +218,6 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         ) {
             ElevatedCard(shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Templates", style = MaterialTheme.typography.titleMedium)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(CollageTemplates.all) { t ->
                             FilterChip(
@@ -233,11 +232,11 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                         }
                     }
 
-Spacer(Modifier.height(10.dp))
+Spacer(Modifier.height(4.dp))
 // Global camera controls (icons only) — applies to all slots
 Row(
     modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalAlignment = Alignment.CenterVertically
 ) {
     AssistChip(
@@ -467,7 +466,7 @@ if (showExportSheet) {
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Share on WhatsApp") }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
         }
     }
 }
