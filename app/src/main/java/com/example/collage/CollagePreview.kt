@@ -259,7 +259,11 @@ LaunchedEffect(captureRequestToken) {
 
 // Global camera controls from ViewModel (keeps slot UI clean)
 val lensFacing = if (vm.lensFacingUi.value == 1) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
-val flashModeUi = flashModeUiFromInt(vm.flashModeUi.value)
+val flashModeUi = when (vm.flashModeUi.value) {
+        0 -> FlashModeUi.OFF
+        1 -> FlashModeUi.AUTO
+        else -> FlashModeUi.ON
+    }
 val gridOn = vm.gridOn.value
 
 
@@ -270,12 +274,6 @@ val gridOn = vm.gridOn.value
         FlashModeUi.AUTO -> ImageCapture.FLASH_MODE_AUTO
         FlashModeUi.ON -> ImageCapture.FLASH_MODE_ON
     }
-
-fun flashModeUiFromInt(v: Int): FlashModeUi = when (v) {
-    0 -> FlashModeUi.OFF
-    1 -> FlashModeUi.AUTO
-    else -> FlashModeUi.ON
-}
 
 
     LaunchedEffect(slotAspect, lensFacing, flashModeUi) {
