@@ -269,6 +269,13 @@ val gridOn = vm.gridOn.value
         FlashModeUi.ON -> ImageCapture.FLASH_MODE_ON
     }
 
+fun flashModeUiFromInt(v: Int): FlashModeUi = when (v) {
+    0 -> FlashModeUi.OFF
+    1 -> FlashModeUi.AUTO
+    else -> FlashModeUi.ON
+}
+
+
     LaunchedEffect(slotAspect, lensFacing, flashModeUi) {
         val provider = ProcessCameraProvider.getInstance(context).get()
         val aspect = CameraAspect.closestCameraXAspect(slotAspect)
