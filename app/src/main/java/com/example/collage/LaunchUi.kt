@@ -34,9 +34,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.collage.ui.theme.BrandBlue
+import com.example.collage.ui.theme.BrandPink
+import com.example.collage.ui.theme.BrandPurple
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.launch
 
@@ -189,34 +193,22 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {                        Text(
-                        text = buildAnnotatedString {
-                            withStyle(
-                                SpanStyle(
-                                    brush = Brush.linearGradient(
-                                        listOf(BrandPurple, BrandPink)
-                                    ),
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            ) { append("Snap") }
-                            withStyle(
-                                SpanStyle(
-                                    brush = Brush.linearGradient(
-                                        listOf(BrandBlue, Color(0xFF1F6BFF))
-                                    ),
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            ) { append("Nest") }
-                        },
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )Text(
-                            context.getString(R.string.tagline),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(
+                                    SpanStyle(
+                                        brush = Brush.linearGradient(listOf(BrandPurple, BrandPink)),
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                ) { append("Snap") }
+                                withStyle(
+                                    SpanStyle(
+                                        brush = Brush.linearGradient(listOf(BrandBlue, Color(0xFF1F6BFF))),
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                ) { append("Nest") }
+                            }
                 }
             )
         },
@@ -433,9 +425,9 @@ Box(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text("Adjust layout", style = MaterialTheme.typography.titleMedium)
-                Text("Spacing", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Spacing", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Slider(value = vm.spacingPx.value, onValueChange = { vm.spacingPx.value = it }, valueRange = 0f..64f)
-                Text("Corner radius", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Corner radius", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Slider(value = vm.cornerRadiusPx.value, onValueChange = { vm.cornerRadiusPx.value = it }, valueRange = 0f..96f)
                 Button(onClick = { showAdjustSheet = false }, modifier = Modifier.fillMaxWidth()) { Text("Done") }
                 Spacer(Modifier.height(8.dp))
@@ -453,7 +445,7 @@ if (showExportSheet) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text("Export", style = MaterialTheme.typography.titleMedium)
-            Text("Choose what to do next:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Choose what to do next:", color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Button(
                 onClick = {
