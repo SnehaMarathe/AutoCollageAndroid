@@ -74,20 +74,20 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 val intent = res.data
                 val out: Uri? = intent?.let { UCrop.getOutput(it) } ?: intent?.data
                 if (out != null && cropSlot >= 0) {
-    // If we're editing a draft (captured but not confirmed), update the draft so the slot updates instantly.
-    val hasDraft = vm.draftCaptureUris.getOrNull(cropSlot) != null
-    if (hasDraft) {
-        vm.setDraftCapture(cropSlot, out)
-    } else {
-        vm.setSlotUri(cropSlot, out)
-    }
-    scope.launch {
-        val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
-        if (t != null) vm.putCachedThumb(out, t)
-    }
-    activeSlot = -1
-    cropSlot = -1
-} else {
+                    // If we're editing a draft (captured but not confirmed), update the draft so the slot updates instantly.
+                    val hasDraft = vm.draftCaptureUris.getOrNull(cropSlot) != null
+                    if (hasDraft) {
+                        vm.setDraftCapture(cropSlot, out)
+                    } else {
+                        vm.setSlotUri(cropSlot, out)
+                    }
+                    scope.launch {
+                        val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
+                        if (t != null) vm.putCachedThumb(out, t)
+                    }
+                    activeSlot = -1
+                    cropSlot = -1
+                } else {
                     scope.launch { snackbar.showSnackbar("Crop finished") }
                 }
             }
@@ -193,22 +193,25 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(
-                                    SpanStyle(
-                                        brush = Brush.linearGradient(listOf(BrandPurple, BrandPink)),
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                ) { append("Snap") }
-                                withStyle(
-                                    SpanStyle(
-                                        brush = Brush.linearGradient(listOf(BrandBlue, Color(0xFF1F6BFF))),
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                ) { append("Nest") }
-                            }
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    brush = Brush.linearGradient(listOf(BrandPurple, BrandPink)),
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) { append("Snap") }
+                            withStyle(
+                                SpanStyle(
+                                    brush = Brush.linearGradient(listOf(BrandBlue, Color(0xFF1F6BFF))),
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) { append("Nest") }
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             )
         },
