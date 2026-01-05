@@ -7,20 +7,20 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Collections
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.FlashAuto
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.FlashAuto
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
@@ -28,9 +28,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.launch
@@ -48,6 +53,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
 
     // Slot being edited (for crop / highlight)
     var activeSlot by remember { mutableIntStateOf(-1) }
+    var cropSlot by remember { mutableIntStateOf(-1) }
     // Slot currently showing CameraX preview
     var activeCameraSlot by remember { mutableIntStateOf(-1) }
 
@@ -63,18 +69,20 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             Activity.RESULT_OK -> {
                 val intent = res.data
                 val out: Uri? = intent?.let { UCrop.getOutput(it) } ?: intent?.data
-                if (out != null && activeSlot >= 0) {
+                if (out != null && cropSlot >= 0) {
     // If we're editing a draft (captured but not confirmed), update the draft so the slot updates instantly.
-    val hasDraft = vm.draftCaptureUris.getOrNull(activeSlot) != null
+    val hasDraft = vm.draftCaptureUris.getOrNull(cropSlot) != null
     if (hasDraft) {
-        vm.setDraftCapture(activeSlot, out)
+        vm.setDraftCapture(cropSlot, out)
     } else {
-        vm.setSlotUri(activeSlot, out)
+        vm.setSlotUri(cropSlot, out)
     }
     scope.launch {
         val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
         if (t != null) vm.putCachedThumb(out, t)
     }
+    activeSlot = -1
+    cropSlot = -1
 } else {
                     scope.launch { snackbar.showSnackbar("Crop finished") }
                 }
@@ -90,7 +98,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         // keep camera open; user might want more shots
     }
 
-    fun launchCrop(source: Uri) {
+    fun launchCrop(slotIndex: Int, source: Uri) {
+        cropSlot = slotIndex
         cropLauncher.launch(UCropHelper.buildIntent(context, source))
     }
 
@@ -101,7 +110,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         if (uri != null && activeSlot >= 0) {
             // Commit before crop so slot never becomes empty.
             vm.setSlotUri(activeSlot, uri)
-            launchCrop(uri)
+            launchCrop(activeSlot, uri)
         }
         activeSlot = -1
     }
@@ -180,19 +189,29 @@ fun LaunchUiRoot(vm: CollageViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = R.drawable.snapnest_logo),
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            context.getString(R.string.app_name),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {                        Text(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    brush = Brush.linearGradient(
+                                        listOf(BrandPurple, BrandPink)
+                                    ),
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) { append("Snap") }
+                            withStyle(
+                                SpanStyle(
+                                    brush = Brush.linearGradient(
+                                        listOf(BrandBlue, Color(0xFF1F6BFF))
+                                    ),
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            ) { append("Nest") }
+                        },
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )Text(
                             context.getString(R.string.tagline),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -396,7 +415,7 @@ Box(
                             val uri = draft ?: return@Button
                             vm.setSlotUri(activeCameraSlot, uri)
                             activeSlot = activeCameraSlot
-                            launchCrop(uri)
+                            launchCrop(activeSlot, uri)
                         },
                         enabled = draft != null
                     ) { Text("Edit") }
