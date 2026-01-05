@@ -43,6 +43,8 @@ import com.example.collage.ui.theme.BrandPink
 import com.example.collage.ui.theme.BrandPurple
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.sp
+
 
 private enum class Tab { TEMPLATES, ADJUST, EXPORT }
 
