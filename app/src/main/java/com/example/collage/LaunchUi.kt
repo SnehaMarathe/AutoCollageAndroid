@@ -84,6 +84,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                     } else {
                         vm.setSlotUri(cropSlot, out)
                     }
+                    // Close live camera overlay so the edited image shows immediately
+                    activeCameraSlot = -1
                     scope.launch {
                         val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
                         if (t != null) vm.putCachedThumb(out, t)
@@ -102,9 +104,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             }
             else -> { /* cancelled */ }
         }
-        if (activeSlot >= 0) vm.clearDraftCapture(activeSlot)
-        activeSlot = -1
-        // keep camera open; user might want more shots
+        // Note: Don't clear draft captures here. Clearing can revert the slot back to the live camera preview
+        // before the edited image is displayed.
     }
 
     fun launchCrop(slotIndex: Int, source: Uri) {
