@@ -216,7 +216,7 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                                 )
                             ) { append("Nest") }
                         },
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 26.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
