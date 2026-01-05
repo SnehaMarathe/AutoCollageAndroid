@@ -7,11 +7,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 private val DarkColors = darkColorScheme(
-    primary = BrandPink,
+    primary = BrandBlue,
     onPrimary = Color.White,
-    secondary = BrandPurple,
+    secondary = BrandPink,
     onSecondary = Color.White,
-    tertiary = BrandOrange,
+    tertiary = BrandPurple,
     onTertiary = Color.Black,
     background = Surface0,
     onBackground = Color.White,
@@ -23,9 +23,9 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun AutoCollageTheme(content: @Composable () -> Unit) {
+fun SnapNestTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = DarkColors, typography = AppTypography, content = content)
 }
 
 @Composable
-fun BrandGradient(): Brush = Brush.linearGradient(listOf(BrandPurple, BrandPink, BrandOrange))
+fun BrandGradient(): Brush = Brush.linearGradient(listOf(BrandPurple, BrandPink, BrandBlue))

@@ -63,7 +63,9 @@ val gridOn = mutableStateOf(true)
 
         slotUris[index] = uri
         slotTransforms[index] = SlotTransform()
+        clearDraftCapture(index)
     }
+
 }
 
     fun clearSlot(index: Int) {

@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.launch
@@ -62,8 +64,13 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 val intent = res.data
                 val out: Uri? = intent?.let { UCrop.getOutput(it) } ?: intent?.data
                 if (out != null && activeSlot >= 0) {
-    // Update slot immediately and pre-cache the fresh thumbnail so UI refreshes instantly
-    vm.setSlotUri(activeSlot, out)
+    // If we're editing a draft (captured but not confirmed), update the draft so the slot updates instantly.
+    val hasDraft = vm.draftCaptureUris.getOrNull(activeSlot) != null
+    if (hasDraft) {
+        vm.setDraftCapture(activeSlot, out)
+    } else {
+        vm.setSlotUri(activeSlot, out)
+    }
     scope.launch {
         val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
         if (t != null) vm.putCachedThumb(out, t)
@@ -174,6 +181,12 @@ fun LaunchUiRoot(vm: CollageViewModel) {
             CenterAlignedTopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Image(
+                            painter = painterResource(id = R.drawable.snapnest_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             context.getString(R.string.app_name),
                             maxLines = 1,
