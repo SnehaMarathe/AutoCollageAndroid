@@ -55,6 +55,9 @@ fun LaunchUiRoot(vm: CollageViewModel) {
 
     var tab by remember { mutableStateOf(Tab.TEMPLATES) }
 
+    // Forces preview subtree to recreate after edits (busts image/thumbnail caches)
+    var imageRefreshTick by remember { mutableIntStateOf(0) }
+
     // Slot being edited (for crop / highlight)
     var activeSlot by remember { mutableIntStateOf(-1) }
     var cropSlot by remember { mutableIntStateOf(-1) }
@@ -85,6 +88,8 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                         val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
                         if (t != null) vm.putCachedThumb(out, t)
                     }
+                    // 🔥 bump refresh so UI reloads immediately (avoids cached bitmap showing)
+                    imageRefreshTick++
                     activeSlot = -1
                     cropSlot = -1
                 } else {
@@ -330,9 +335,10 @@ Box(
 ) {
 
 
-    CollagePreview(
+    key(imageRefreshTick) {
 
 
+        CollagePreview(
         modifier = Modifier
 
 
@@ -367,6 +373,10 @@ Box(
                     activeCameraSlot = -1
                 }
             )
+
+
+    }
+
 
 
             }
