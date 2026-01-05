@@ -62,8 +62,13 @@ fun LaunchUiRoot(vm: CollageViewModel) {
                 val intent = res.data
                 val out: Uri? = intent?.let { UCrop.getOutput(it) } ?: intent?.data
                 if (out != null && activeSlot >= 0) {
-                    vm.setSlotUri(activeSlot, out)
-                } else {
+    // Update slot immediately and pre-cache the fresh thumbnail so UI refreshes instantly
+    vm.setSlotUri(activeSlot, out)
+    scope.launch {
+        val t = ThumbnailLoader.loadThumbnail(context, out, maxSizePx = 1024)
+        if (t != null) vm.putCachedThumb(out, t)
+    }
+} else {
                     scope.launch { snackbar.showSnackbar("Crop finished") }
                 }
             }
